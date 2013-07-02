@@ -17,7 +17,7 @@ static int SHAPE_SCALE_MAX = 5;
 static int SHAPE_FILL_COLOR = -1;
 static int SHAPE_FILL_ALPHA = 0;
 static int SHAPE_STROKE_COLOR = -1;
-static int SHAPE_STROKE_ALPHA = 255;
+static int SHAPE_STROKE_ALPHA = 20;
 
 void setup() {
   size(1000, 1000);
@@ -52,7 +52,7 @@ void mousePressed() {
 
 
 void draw() {
-  t += 0.01;
+  t += 0.1;
   physics.update();
   canvas.beginDraw();
   for (VerletParticle2D p : physics.particles) {
@@ -76,11 +76,11 @@ void draw() {
       canvas.translate(canvas.width / 2, canvas.height / 2);
       canvas.rotate(i);
 
-      PShape ss = shapes.get(shapeSrc.get(physics.particles.indexOf(p)));
-      ss.resetMatrix();
-      ss.scale(map(noise(p.x * 0.01, p.y * 0.01, frameCount * 0.01), 0, 1, SHAPE_SCALE_MIN, SHAPE_SCALE_MAX));
-      ss.rotate(p.getVelocity().heading() + PI);
-      canvas.shape(ss, p.x-canvas.width/2, p.y-canvas.height/2);
+      PShape shape = shapes.get(shapeSrc.get(physics.particles.indexOf(p)));
+      shape.resetMatrix();
+      shape.scale(map(noise(t), 0, 1, SHAPE_SCALE_MIN, SHAPE_SCALE_MAX));
+      shape.rotate(p.getVelocity().heading() + PI);
+      canvas.shape(shape, p.x-canvas.width / 2, p.y-canvas.height / 2);
       canvas.popMatrix();
     }
   }
