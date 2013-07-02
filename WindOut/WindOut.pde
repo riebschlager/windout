@@ -7,8 +7,9 @@ PGraphics canvas;
 ArrayList<PShape> shapes = new ArrayList<PShape>();
 ArrayList<Integer> shapeSrc = new ArrayList<Integer>();
 PImage src;
+float t = random(10000);
 
-static int NUMBER_OF_ROTATIONS = 4;
+static int NUMBER_OF_ROTATIONS = 6;
 
 void setup() {
   size(1000, 1000);
@@ -28,7 +29,7 @@ void setup() {
 void mousePressed() {
   physics.clear();
   shapeSrc.clear();
-  for (int i = 0; i < 1; i++) {
+  for (int i = 0; i < 6; i++) {
     float randomX = map(mouseX, 0, width, 0, canvas.width) + random(-50, 50);
     float randomY = map(mouseY, 0, height, 0, canvas.height) + random(-50, 50);
     VerletParticle2D p = new VerletParticle2D(randomX, randomY);
@@ -39,7 +40,7 @@ void mousePressed() {
   }
 }
 
-float t = random(10000);
+
 
 void draw() {
   t += 0.01;
@@ -58,7 +59,6 @@ void draw() {
       canvas.stroke(0);
       canvas.strokeWeight(0.1);
       PShape ss = shapes.get(shapeSrc.get(physics.particles.indexOf(p)));
-
       ss.disableStyle();
       ss.resetMatrix();
       ss.scale(map(noise(p.x * 0.01, p.y * 0.01, frameCount * 0.01), 0, 1, 0, 5));
@@ -89,6 +89,8 @@ void keyPressed() {
 
 
 void loadVectors(String folderName) {
+  // Create an SVG with several shapes, each on its own layer.
+  // Make sure they're all crammed into the top-left of the artboard.
   File folder = new File(this.sketchPath + "/data/vector/" + folderName);
   File[] listOfFiles = folder.listFiles();
   for (File file : listOfFiles) {
