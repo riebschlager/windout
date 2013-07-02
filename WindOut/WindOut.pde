@@ -14,6 +14,10 @@ static int SHAPES_PER_CLICK = 6;
 static int SHAPE_SCATTER = 10;
 static int SHAPE_SCALE_MIN = 0;
 static int SHAPE_SCALE_MAX = 5;
+static int SHAPE_FILL_COLOR = -1;
+static int SHAPE_FILL_ALPHA = 0;
+static int SHAPE_STROKE_COLOR = -1;
+static int SHAPE_STROKE_ALPHA = 255;
 
 void setup() {
   size(1000, 1000);
@@ -53,12 +57,25 @@ void draw() {
   canvas.beginDraw();
   for (VerletParticle2D p : physics.particles) {
     for (float i = 0; i < TWO_PI; i+= TWO_PI / NUMBER_OF_ROTATIONS) {
-      int c = src.get((int) map(p.x, 0, canvas.width, 0, src.width), (int) map(p.y, 0, canvas.height, 0, src.height));
+      int pixel = src.get((int) map(p.x, 0, canvas.width, 0, src.width), (int) map(p.y, 0, canvas.height, 0, src.height));
+      int fillColor = (SHAPE_FILL_COLOR > 0) ? SHAPE_FILL_COLOR : color(red(pixel), green(pixel), blue(pixel), SHAPE_FILL_ALPHA);
+      int strokeColor = (SHAPE_STROKE_COLOR > 0) ? SHAPE_STROKE_COLOR : color(red(pixel), green(pixel), blue(pixel), SHAPE_STROKE_ALPHA);
+      if (SHAPE_FILL_ALPHA == 0) {
+        canvas.noFill();
+      } 
+      else {
+        canvas.fill(fillColor);
+      }
+      if (SHAPE_STROKE_ALPHA == 0) {
+        canvas.noStroke();
+      }
+      else {
+        canvas.stroke(strokeColor);
+      }
       canvas.pushMatrix();
       canvas.translate(canvas.width / 2, canvas.height / 2);
       canvas.rotate(i);
-      canvas.fill(red(c), green(c), blue(c), 80);
-      canvas.noStroke();
+
       PShape ss = shapes.get(shapeSrc.get(physics.particles.indexOf(p)));
       ss.resetMatrix();
       ss.scale(map(noise(p.x * 0.01, p.y * 0.01, frameCount * 0.01), 0, 1, SHAPE_SCALE_MIN, SHAPE_SCALE_MAX));
