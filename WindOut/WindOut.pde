@@ -26,7 +26,7 @@ void setup() {
   canvas.beginDraw();
   canvas.background(255);
   canvas.endDraw();
-  loadVectors("flourish");
+  loadVectors("flowers");
   physics = new VerletPhysics2D();
   physics.setDrag(0.25f);
   //physics.setWorldBounds(new Rect(0, 0, width, height));
@@ -34,22 +34,6 @@ void setup() {
   src = loadImage("http://24.media.tumblr.com/75d4a32b56db14aa1a2c5a251d368864/tumblr_mozo3rGQiO1qc4s84o1_250.jpg");
   src.loadPixels();
 }
-
-void mousePressed() {
-  physics.clear();
-  shapeSrc.clear();
-  for (int i = 0; i < SHAPES_PER_CLICK; i++) {
-    float randomX = map(mouseX, 0, width, 0, canvas.width) + random(-SHAPE_SCATTER, SHAPE_SCATTER);
-    float randomY = map(mouseY, 0, height, 0, canvas.height) + random(-SHAPE_SCATTER, SHAPE_SCATTER);
-    VerletParticle2D p = new VerletParticle2D(randomX, randomY);
-    p.addVelocity(new Vec2D(random(2), random(2)));
-    physics.addParticle(p);
-    physics.addBehavior(new AttractionBehavior(p, 200, -0.2f));
-    shapeSrc.add((int) random(shapes.size()));
-  }
-}
-
-
 
 void draw() {
   t += 0.1;
@@ -88,6 +72,19 @@ void draw() {
   image(canvas, 0, 0, width, height);
 }
 
+void mousePressed() {
+  physics.clear();
+  shapeSrc.clear();
+  for (int i = 0; i < SHAPES_PER_CLICK; i++) {
+    float randomX = map(mouseX, 0, width, 0, canvas.width) + random(-SHAPE_SCATTER, SHAPE_SCATTER);
+    float randomY = map(mouseY, 0, height, 0, canvas.height) + random(-SHAPE_SCATTER, SHAPE_SCATTER);
+    VerletParticle2D p = new VerletParticle2D(randomX, randomY);
+    p.addVelocity(new Vec2D(random(2), random(2)));
+    physics.addParticle(p);
+    physics.addBehavior(new AttractionBehavior(p, 200, -0.2f));
+    shapeSrc.add((int) random(shapes.size()));
+  }
+}
 
 void keyPressed() {
   if (key == 's') {
