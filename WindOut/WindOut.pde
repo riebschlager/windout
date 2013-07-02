@@ -10,9 +10,14 @@ PImage src;
 float t = random(10000);
 
 static int NUMBER_OF_ROTATIONS = 6;
+static int SHAPES_PER_CLICK = 6;
+static int SHAPE_SCATTER = 10;
+static int SHAPE_SCALE_MIN = 0;
+static int SHAPE_SCALE_MAX = 5;
 
 void setup() {
   size(1000, 1000);
+  // Create a drawing context that matches your targeted print size.
   canvas = createGraphics(3000, 3000);
   canvas.beginDraw();
   canvas.background(255);
@@ -29,11 +34,11 @@ void setup() {
 void mousePressed() {
   physics.clear();
   shapeSrc.clear();
-  for (int i = 0; i < 6; i++) {
-    float randomX = map(mouseX, 0, width, 0, canvas.width) + random(-50, 50);
-    float randomY = map(mouseY, 0, height, 0, canvas.height) + random(-50, 50);
+  for (int i = 0; i < SHAPES_PER_CLICK; i++) {
+    float randomX = map(mouseX, 0, width, 0, canvas.width) + random(-SHAPE_SCATTER, SHAPE_SCATTER);
+    float randomY = map(mouseY, 0, height, 0, canvas.height) + random(-SHAPE_SCATTER, SHAPE_SCATTER);
     VerletParticle2D p = new VerletParticle2D(randomX, randomY);
-    p.addVelocity(new Vec2D(random(22), random(2)));
+    p.addVelocity(new Vec2D(random(2), random(2)));
     physics.addParticle(p);
     physics.addBehavior(new AttractionBehavior(p, 200, -0.2f));
     shapeSrc.add((int) random(shapes.size()));
@@ -52,17 +57,11 @@ void draw() {
       canvas.pushMatrix();
       canvas.translate(canvas.width / 2, canvas.height / 2);
       canvas.rotate(i);
-      //canvas.stroke(red(c), green(c), blue(c), blue(c));
-      //canvas.strokeWeight(0.5);
       canvas.fill(red(c), green(c), blue(c), 80);
       canvas.noStroke();
-      canvas.stroke(0);
-      canvas.strokeWeight(0.1);
       PShape ss = shapes.get(shapeSrc.get(physics.particles.indexOf(p)));
-      ss.disableStyle();
       ss.resetMatrix();
-      ss.scale(map(noise(p.x * 0.01, p.y * 0.01, frameCount * 0.01), 0, 1, 0, 5));
-      //ss.rotate(map(noise(t), 0, 1, 0, TWO_PI));
+      ss.scale(map(noise(p.x * 0.01, p.y * 0.01, frameCount * 0.01), 0, 1, SHAPE_SCALE_MIN, SHAPE_SCALE_MAX));
       ss.rotate(p.getVelocity().heading() + PI);
       canvas.shape(ss, p.x-canvas.width/2, p.y-canvas.height/2);
       canvas.popMatrix();
