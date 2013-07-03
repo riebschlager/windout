@@ -6,9 +6,7 @@ import toxi.physics2d.behaviors.*;
 VerletPhysics2D physics;
 PGraphics canvas;
 ArrayList<PShape> shapes = new ArrayList<PShape>();
-ArrayList<Integer> shapeSrc = new ArrayList<Integer>();
-ArrayList<Integer> shapeColors = new ArrayList<Integer>();
-PImage src;
+PImage sourceImage;
 float time;
 ControlP5 cp5;
 boolean isToolbarVisible = false;
@@ -33,8 +31,8 @@ void setup() {
   loadVectors("ornate", "retro", "flourish", "doodads");
   physics = new VerletPhysics2D();
   physics.setDrag(0.5f);
-  src = loadImage("http://img.ffffound.com/static-data/assets/6/e9f0f42dbec13654030f5a2bcab97c7b465aed7e_m.jpg");
-  src.loadPixels();
+  sourceImage = loadImage("http://img.ffffound.com/static-data/assets/6/e9f0f42dbec13654030f5a2bcab97c7b465aed7e_m.jpg");
+  sourceImage.loadPixels();
   setupCP5();
 }
 
@@ -56,12 +54,17 @@ void draw() {
   time += 0.01;
   physics.update();
   canvas.beginDraw();
-  for (VerletParticle2D p : physics.particles) {
+  for (VerletParticle2D vp2d : physics.particles) {
+    Particle p = (Particle) vp2d;
+    p.age++;
+    if (p.age >= p.lifetime) {
+      physics.removeParticle(p); 
+      return;
+    }
     for (float i = 0; i < TWO_PI; i+= TWO_PI / NUMBER_OF_ROTATIONS) {
-      //int pixel = src.get((int) map(p.x, 0, canvas.width, 0, src.width), (int) map(p.y, 0, canvas.height, 0, src.height));
-      int pixel = shapeColors.get(physics.particles.indexOf(p));
-      int fillColor = color(red(pixel), green(pixel), blue(pixel), SHAPE_FILL_ALPHA);
-      int strokeColor = color(red(pixel), green(pixel), blue(pixel), SHAPE_STROKE_ALPHA);
+      //int fillColor = color(red(p.pixel), green(p.pixel), blue(p.pixel), SHAPE_FILL_ALPHA);
+      int fillColor = color(red(p.pixel), green(p.pixel), blue(p.pixel), map(p.age, 0, p.lifetime, 0, SHAPE_FILL_ALPHA));
+      int strokeColor = color(red(p.pixel), green(p.pixel), blue(p.pixel), SHAPE_STROKE_ALPHA);
       if (SHAPE_FILL_ALPHA == 0) {
         canvas.noFill();
       } 
@@ -77,12 +80,10 @@ void draw() {
       canvas.pushMatrix();
       canvas.translate(canvas.width / 2, canvas.height / 2);
       canvas.rotate(i);
-
-      PShape shape = shapes.get(shapeSrc.get(physics.particles.indexOf(p)));
-      shape.resetMatrix();
-      shape.scale(map(noise(time), 0, 1, SHAPE_SCALE_MIN, SHAPE_SCALE_MAX));
-      shape.rotate(p.getVelocity().heading());
-      canvas.shape(shape, p.x-canvas.width / 2, p.y-canvas.height / 2);
+      p.shape.resetMatrix();
+      p.shape.scale(map(noise(time), 0, 1, SHAPE_SCALE_MIN, SHAPE_SCALE_MAX));
+      p.shape.rotate(p.getVelocity().heading());
+      canvas.shape(p.shape, p.x-canvas.width / 2, p.y-canvas.height / 2);
       canvas.popMatrix();
     }
   }
@@ -99,8 +100,6 @@ void resetPhysics() {
   physics.particles.clear();
   physics.behaviors.clear();
   physics.clear();
-  shapeSrc.clear();
-  shapeColors.clear();
 }
 
 void mousePressed() {
@@ -109,11 +108,12 @@ void mousePressed() {
   for (int i = 0; i < SHAPES_PER_CLICK; i++) {
     float pX = map(mouseX, 0, width, 0, canvas.width) + random(-SHAPE_SCATTER, SHAPE_SCATTER);
     float pY = map(mouseY, 0, height, 0, canvas.height) + random(-SHAPE_SCATTER, SHAPE_SCATTER);
-    VerletParticle2D p = new VerletParticle2D(pX, pY);
+    Particle p = new Particle(pX, pY);
     physics.addParticle(p);
     physics.addBehavior(new AttractionBehavior(p, PARTICLE_FORCE_RADIUS, PARTICLE_FORCE));
-    shapeSrc.add((int) random(shapes.size()));
-    shapeColors.add(src.get((int) random(src.width), (int) random(src.height)));
+    p.shape = shapes.get((int) random(shapes.size()));
+    p.pixel = sourceImage.pixels[(int) random(sourceImage.pixels.length)];
+    p.lifetime = 30;
   }
 }
 
