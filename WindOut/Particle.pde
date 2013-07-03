@@ -2,6 +2,7 @@ class Particle extends VerletParticle2D {
 
   PShape shape;
   int pixel;
+  int targetPixel;
   float age;
   float lifetime;
   String directionality;

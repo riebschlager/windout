@@ -16,10 +16,11 @@ int SHAPES_PER_CLICK = 5;
 int SHAPE_SCATTER = 5;
 float SHAPE_SCALE_MIN = 1f;
 float SHAPE_SCALE_MAX = 3f;
-int SHAPE_FILL_ALPHA = 25;
+int SHAPE_FILL_ALPHA = 100;
 int SHAPE_STROKE_ALPHA = 0;
 int PARTICLE_FORCE_RADIUS = 50;
 float PARTICLE_FORCE = -2.5f;
+float PARTICLE_LIFETIME = 30f;
 
 void setup() {
   size(1000, 1000);
@@ -31,12 +32,8 @@ void setup() {
   loadVectors("retro", "flourish");
   physics = new VerletPhysics2D();
   physics.setDrag(0.5f);
-  sourceImage = loadImage("bitmap/5317657715_3f0c8ca5fe_o.jpg");
+  sourceImage = loadImage("http://img.ffffound.com/static-data/assets/6/31b1dc3c0395c79221ebf835485afc9b705278b9_m.jpg");
   sourceImage.loadPixels();
-  setupCP5();
-}
-
-void setupCP5() {
   cp5 = new ControlP5(this);
   cp5.addNumberbox("NUMBER_OF_ROTATIONS").setPosition(10, 100).setSize(100, 14).setMultiplier(1).setMin(1).setMax(50).setValue(NUMBER_OF_ROTATIONS).setCaptionLabel("NUMBER_OF_ROTATIONS");
   cp5.addNumberbox("SHAPES_PER_CLICK").setPosition(10, 140).setSize(100, 14).setMultiplier(1).setMin(1).setMax(50).setValue(SHAPES_PER_CLICK).setCaptionLabel("SHAPES_PER_CLICK");
@@ -47,7 +44,83 @@ void setupCP5() {
   cp5.addNumberbox("SHAPE_STROKE_ALPHA").setPosition(10, 340).setSize(100, 14).setMultiplier(1).setMin(0).setMax(255).setValue(SHAPE_STROKE_ALPHA).setCaptionLabel("SHAPE_STROKE_ALPHA");
   cp5.addNumberbox("PARTICLE_FORCE_RADIUS").setPosition(10, 380).setSize(100, 14).setMultiplier(1).setMin(0).setMax(1000).setValue(PARTICLE_FORCE_RADIUS).setCaptionLabel("PARTICLE_FORCE_RADIUS");
   cp5.addNumberbox("PARTICLE_FORCE").setPosition(10, 420).setSize(100, 14).setMultiplier(0.01f).setMin(-5f).setMax(5f).setValue(PARTICLE_FORCE).setCaptionLabel("PARTICLE_FORCE");
+  cp5.addNumberbox("PARTICLE_LIFETIME").setPosition(10, 460).setSize(100, 14).setMultiplier(1).setMin(1f).setMax(300f).setValue(PARTICLE_LIFETIME).setCaptionLabel("PARTICLE_LIFETIME");
   cp5.hide();
+}
+
+void draw() {
+  time += 0.1;
+  physics.update();
+  canvas.beginDraw();
+  canvas.noFill();
+  canvas.noStroke();
+  for (VerletParticle2D vp2d : physics.particles) {
+    Particle p = (Particle) vp2d;
+    if (p.age >= p.lifetime) {
+      physics.removeParticle(p); 
+      return;
+    }
+    for (float i = 0; i < TWO_PI; i+= TWO_PI / NUMBER_OF_ROTATIONS) {
+      int c = getColor(p, "fadeTo", p.targetPixel);
+      int fillColor = color(red(c), green(c), blue(c), getAlpha(p, "fadeInOut", SHAPE_FILL_ALPHA));
+      int strokeColor = color(red(p.pixel), green(p.pixel), blue(p.pixel), getAlpha(p, "fadeInOut", SHAPE_STROKE_ALPHA));
+      if (SHAPE_FILL_ALPHA != 0) canvas.fill(fillColor);
+      if (SHAPE_STROKE_ALPHA != 0) canvas.stroke(strokeColor);
+      canvas.pushMatrix();
+      canvas.translate(canvas.width / 2, canvas.height / 2);
+      canvas.rotate(i);
+      p.shape.resetMatrix();
+      p.shape.scale(getScale(p, "scaleInOut"));
+      p.shape.rotate(getRotation(p, "age", 0, PI, p.directionality));
+      canvas.shape(p.shape, p.x - canvas.width / 2, p.y - canvas.height / 2);
+      canvas.popMatrix();
+    }
+    p.age++;
+  }
+  canvas.endDraw();
+  image(canvas, 0, 0, width, height);
+  if (isToolbarVisible) {
+    fill(0, 150);
+    rect(0, 0, width, height);
+  }
+}
+
+void mousePressed() {
+  if (isToolbarVisible) return;
+  resetPhysics();
+  for (int i = 0; i < SHAPES_PER_CLICK; i++) {
+    float pX = map(mouseX, 0, width, 0, canvas.width) + random(-SHAPE_SCATTER, SHAPE_SCATTER);
+    float pY = map(mouseY, 0, height, 0, canvas.height) + random(-SHAPE_SCATTER, SHAPE_SCATTER);
+    Particle p = new Particle(pX, pY);
+    physics.addParticle(p);
+    physics.addBehavior(new AttractionBehavior(p, PARTICLE_FORCE_RADIUS, PARTICLE_FORCE));
+    p.shape = shapes.get((int) random(shapes.size()));
+    p.pixel = sourceImage.pixels[(int) random(sourceImage.pixels.length)];
+    p.targetPixel = sourceImage.pixels[(int) random(sourceImage.pixels.length)];
+    p.lifetime = PARTICLE_LIFETIME;
+  }
+}
+
+void keyPressed() {
+  if (key == 'b') {
+    canvas.filter(BLUR, 3);
+  }
+  if (key == 't') {
+    isToolbarVisible = !isToolbarVisible;
+    if (isToolbarVisible) cp5.show();
+    else cp5.hide();
+  }
+  if (key == 's') {
+    canvas.save("data/output/composition-" + month() + "-" + day() + "-" + hour() + "-" + minute() + "-" + second() + ".tif");
+  }
+  if (key == 'c') {
+    canvas.beginDraw();
+    canvas.background(255);
+    canvas.endDraw();
+  }
+  if (key == ' ') {
+    resetPhysics();
+  }
 }
 
 float getAlpha(Particle p, String mode, int max) {
@@ -89,18 +162,12 @@ float getScale(Particle p, String mode) {
   return 1f;
 }
 
-int getColor(Particle p, String mode) {
-  if (mode == "fadeToBlack") {
-    return lerpColor(p.pixel, 0xFF000000, p.age / p.lifetime);
+int getColor(Particle p, String mode, int targetColor) {
+  if (mode == "fadeTo") {
+    return lerpColor(p.pixel, targetColor, p.age / p.lifetime);
   }
-  if (mode == "fadeFromBlack") {
-    return lerpColor(0xFF000000, p.pixel, p.age / p.lifetime);
-  }
-  if (mode == "fadeToWhite") {
-    return lerpColor(p.pixel, 0xFFFFFFFF, p.age / p.lifetime);
-  }
-  if (mode == "fadeFromWhite") {
-    return lerpColor(0xFFFFFFFF, p.pixel, p.age / p.lifetime);
+  if (mode == "fadeFrom") {
+    return lerpColor(targetColor, p.pixel, p.age / p.lifetime);
   }
   return p.pixel;
 }
@@ -130,85 +197,11 @@ float getRotation(Particle p, String mode, float min, float max, String directio
   return 0f;
 }
 
-void draw() {
-  time += 0.1;
-  physics.update();
-  canvas.beginDraw();
-  canvas.noFill();
-  canvas.noStroke();
-  for (VerletParticle2D vp2d : physics.particles) {
-    Particle p = (Particle) vp2d;
-    if (p.age >= p.lifetime) {
-      physics.removeParticle(p); 
-      return;
-    }
-    for (float i = 0; i < TWO_PI; i+= TWO_PI / NUMBER_OF_ROTATIONS) {
-      int c = getColor(p, "fadeToBlack");
-      int fillColor = color(red(c), green(c), blue(c), getAlpha(p, "fadeOut", SHAPE_FILL_ALPHA));
-      int strokeColor = color(red(p.pixel), green(p.pixel), blue(p.pixel), getAlpha(p, "fadeIn", SHAPE_STROKE_ALPHA));
-      if (SHAPE_FILL_ALPHA != 0) canvas.fill(fillColor);
-      if (SHAPE_STROKE_ALPHA != 0) canvas.stroke(strokeColor);
-      canvas.pushMatrix();
-      canvas.translate(canvas.width / 2, canvas.height / 2);
-      canvas.rotate(i);
-      p.shape.resetMatrix();
-      p.shape.scale(getScale(p, "scaleIn"));
-      p.shape.rotate(getRotation(p, "age", 0, PI, p.directionality));
-      canvas.shape(p.shape, p.x - canvas.width / 2, p.y - canvas.height / 2);
-      canvas.popMatrix();
-    }
-    p.age++;
-  }
-  canvas.endDraw();
-  image(canvas, 0, 0, width, height);
-  if (isToolbarVisible) {
-    fill(0, 150);
-    rect(0, 0, width, height);
-  }
-}
-
 void resetPhysics() {
   time = random(1000);
   physics.particles.clear();
   physics.behaviors.clear();
   physics.clear();
-}
-
-void mousePressed() {
-  if (isToolbarVisible) return;
-  resetPhysics();
-  for (int i = 0; i < SHAPES_PER_CLICK; i++) {
-    float pX = map(mouseX, 0, width, 0, canvas.width) + random(-SHAPE_SCATTER, SHAPE_SCATTER);
-    float pY = map(mouseY, 0, height, 0, canvas.height) + random(-SHAPE_SCATTER, SHAPE_SCATTER);
-    Particle p = new Particle(pX, pY);
-    physics.addParticle(p);
-    physics.addBehavior(new AttractionBehavior(p, PARTICLE_FORCE_RADIUS, PARTICLE_FORCE));
-    p.shape = shapes.get((int) random(shapes.size()));
-    p.pixel = sourceImage.pixels[(int) random(sourceImage.pixels.length)];
-    p.lifetime = 30f;
-  }
-}
-
-void keyPressed() {
-  if (key == 'b') {
-    canvas.filter(BLUR, 3);
-  }
-  if (key == 't') {
-    isToolbarVisible = !isToolbarVisible;
-    if (isToolbarVisible) cp5.show();
-    else cp5.hide();
-  }
-  if (key == 's') {
-    canvas.save("data/output/composition-" + month() + "-" + day() + "-" + hour() + "-" + minute() + "-" + second() + ".tif");
-  }
-  if (key == 'c') {
-    canvas.beginDraw();
-    canvas.background(255);
-    canvas.endDraw();
-  }
-  if (key == ' ') {
-    resetPhysics();
-  }
 }
 
 // Create an SVG with several shapes, each on its own layer.
