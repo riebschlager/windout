@@ -50,8 +50,47 @@ void setupCP5() {
   cp5.hide();
 }
 
+float getAlpha(Particle p, String mode, int max) {
+  if (mode == "fadeIn") {
+    return map(p.age, 0, p.lifetime, 0, max);
+  }
+  if (mode == "fadeOut") {
+    return map(p.age, 0, p.lifetime, max, 0);
+  }
+  if (mode == "fadeInOut") {
+    if (p.age / p.lifetime < 0.5) {
+      return map(p.age, 0, p.lifetime/2, 0, max/2);
+    }
+    else {
+      return map(p.age, p.lifetime/2, p.lifetime, max/2, max);
+    }
+  }
+  return max;
+}
+
+float getScale(Particle p, String mode) {
+  if (mode == "noise") {
+    return map(noise(time), 0, 1, SHAPE_SCALE_MIN, SHAPE_SCALE_MAX);
+  }
+  if (mode == "scaleIn") {
+    return map(p.age, 0, p.lifetime, SHAPE_SCALE_MIN, SHAPE_SCALE_MAX);
+  }
+  if (mode == "scaleOut") {
+    return map(p.age, 0, p.lifetime, SHAPE_SCALE_MAX, SHAPE_SCALE_MIN);
+  }
+  if (mode == "scaleInOut") {
+    if (p.age / p.lifetime < 0.5f) {
+      return map(p.age, 0, p.lifetime/2, SHAPE_SCALE_MIN, SHAPE_SCALE_MAX);
+    }
+    else {
+      return map(p.age, p.lifetime/2, p.lifetime, SHAPE_SCALE_MAX, 0);
+    }
+  }
+  return 1;
+}
+
 void draw() {
-  time += 0.01;
+  time += 0.1;
   physics.update();
   canvas.beginDraw();
   for (VerletParticle2D vp2d : physics.particles) {
@@ -62,9 +101,8 @@ void draw() {
       return;
     }
     for (float i = 0; i < TWO_PI; i+= TWO_PI / NUMBER_OF_ROTATIONS) {
-      //int fillColor = color(red(p.pixel), green(p.pixel), blue(p.pixel), SHAPE_FILL_ALPHA);
-      int fillColor = color(red(p.pixel), green(p.pixel), blue(p.pixel), map(p.age, 0, p.lifetime, 0, SHAPE_FILL_ALPHA));
-      int strokeColor = color(red(p.pixel), green(p.pixel), blue(p.pixel), SHAPE_STROKE_ALPHA);
+      int fillColor = color(red(p.pixel), green(p.pixel), blue(p.pixel), getAlpha(p, "fadeInOut", SHAPE_FILL_ALPHA));
+      int strokeColor = color(red(p.pixel), green(p.pixel), blue(p.pixel), getAlpha(p, "fadeIn", SHAPE_STROKE_ALPHA));
       if (SHAPE_FILL_ALPHA == 0) {
         canvas.noFill();
       } 
@@ -81,7 +119,7 @@ void draw() {
       canvas.translate(canvas.width / 2, canvas.height / 2);
       canvas.rotate(i);
       p.shape.resetMatrix();
-      p.shape.scale(map(noise(time), 0, 1, SHAPE_SCALE_MIN, SHAPE_SCALE_MAX));
+      p.shape.scale(getScale(p, "scaleInOut"));
       p.shape.rotate(p.getVelocity().heading());
       canvas.shape(p.shape, p.x-canvas.width / 2, p.y-canvas.height / 2);
       canvas.popMatrix();
@@ -113,7 +151,7 @@ void mousePressed() {
     physics.addBehavior(new AttractionBehavior(p, PARTICLE_FORCE_RADIUS, PARTICLE_FORCE));
     p.shape = shapes.get((int) random(shapes.size()));
     p.pixel = sourceImage.pixels[(int) random(sourceImage.pixels.length)];
-    p.lifetime = 30;
+    p.lifetime = random(100);
   }
 }
 
