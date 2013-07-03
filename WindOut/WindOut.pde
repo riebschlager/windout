@@ -9,7 +9,7 @@ ArrayList<PShape> shapes = new ArrayList<PShape>();
 ArrayList<Integer> shapeSrc = new ArrayList<Integer>();
 ArrayList<Integer> shapeColors = new ArrayList<Integer>();
 PImage src;
-float t = random(10000);
+float time;
 ControlP5 cp5;
 boolean isToolbarVisible = false;
 
@@ -30,15 +30,10 @@ void setup() {
   canvas.beginDraw();
   canvas.background(255);
   canvas.endDraw();
-  loadVectors("splat");
-  loadVectors("flourish");
-  loadVectors("scribble");
-  loadVectors("retro");
-  loadVectors("stain");
-  loadVectors("doodads");
+  loadVectors("ornate", "retro", "flourish", "doodads");
   physics = new VerletPhysics2D();
   physics.setDrag(0.5f);
-  src = loadImage("http://dribbble.s3.amazonaws.com/users/21071/screenshots/1139794/cran--beer-labels_1x.png");
+  src = loadImage("http://img.ffffound.com/static-data/assets/6/e9f0f42dbec13654030f5a2bcab97c7b465aed7e_m.jpg");
   src.loadPixels();
   setupCP5();
 }
@@ -58,7 +53,7 @@ void setupCP5() {
 }
 
 void draw() {
-  t += 0.01;
+  time += 0.01;
   physics.update();
   canvas.beginDraw();
   for (VerletParticle2D p : physics.particles) {
@@ -85,7 +80,7 @@ void draw() {
 
       PShape shape = shapes.get(shapeSrc.get(physics.particles.indexOf(p)));
       shape.resetMatrix();
-      shape.scale(map(noise(t), 0, 1, SHAPE_SCALE_MIN, SHAPE_SCALE_MAX));
+      shape.scale(map(noise(time), 0, 1, SHAPE_SCALE_MIN, SHAPE_SCALE_MAX));
       shape.rotate(p.getVelocity().heading());
       canvas.shape(shape, p.x-canvas.width / 2, p.y-canvas.height / 2);
       canvas.popMatrix();
@@ -99,17 +94,22 @@ void draw() {
   }
 }
 
-void mousePressed() {
-  if (isToolbarVisible) return;
-  t = random(1000);
+void resetPhysics() {
+  time = random(1000);
+  physics.particles.clear();
+  physics.behaviors.clear();
   physics.clear();
   shapeSrc.clear();
   shapeColors.clear();
+}
+
+void mousePressed() {
+  if (isToolbarVisible) return;
+  resetPhysics();
   for (int i = 0; i < SHAPES_PER_CLICK; i++) {
     float pX = map(mouseX, 0, width, 0, canvas.width) + random(-SHAPE_SCATTER, SHAPE_SCATTER);
     float pY = map(mouseY, 0, height, 0, canvas.height) + random(-SHAPE_SCATTER, SHAPE_SCATTER);
     VerletParticle2D p = new VerletParticle2D(pX, pY);
-    //p.addVelocity(new Vec2D(random(-10, 10), random(-10, 10)));
     physics.addParticle(p);
     physics.addBehavior(new AttractionBehavior(p, PARTICLE_FORCE_RADIUS, PARTICLE_FORCE));
     shapeSrc.add((int) random(shapes.size()));
@@ -119,7 +119,7 @@ void mousePressed() {
 
 void keyPressed() {
   if (key == 'b') {
-    canvas.filter(BLUR, 1);
+    canvas.filter(BLUR, 3);
   }
   if (key == 't') {
     isToolbarVisible = !isToolbarVisible;
@@ -135,23 +135,27 @@ void keyPressed() {
     canvas.endDraw();
   }
   if (key == ' ') {
-    physics.clear();
+    resetPhysics();
   }
 }
 
+// Create an SVG with several shapes, each on its own layer.
+// Make sure they're all crammed into the top-left of the artboard.
 
-void loadVectors(String folderName) {
-  // Create an SVG with several shapes, each on its own layer.
-  // Make sure they're all crammed into the top-left of the artboard.
-  File folder = new File(this.sketchPath + "/data/vector/" + folderName);
-  File[] listOfFiles = folder.listFiles();
-  for (File file : listOfFiles) {
-    if (file.isFile()) {
-      PShape shape = loadShape(file.getAbsolutePath());
-      for (PShape layer : shape.getChildren()) {
-        if (layer!=null) {
-          layer.disableStyle();
-          shapes.add(layer);
+void loadVectors(String ... folderName) {
+  for (int i = 0; i < folderName.length; i++) {
+    int limit = 0;
+    File folder = new File(this.sketchPath + "/data/vector/" + folderName[i]);
+    File[] listOfFiles = folder.listFiles();
+    for (File file : listOfFiles) {
+      if (file.isFile()) {
+        PShape shape = loadShape(file.getAbsolutePath());
+        for (PShape layer : shape.getChildren()) {
+          if (layer!=null && limit < 20) {
+            layer.disableStyle();
+            shapes.add(layer);
+            limit++;
+          }
         }
       }
     }
