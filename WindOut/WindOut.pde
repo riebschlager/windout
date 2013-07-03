@@ -10,17 +10,18 @@ PImage sourceImage;
 float time;
 ControlP5 cp5;
 boolean isToolbarVisible = false;
+int videoFrame = 0;
 
 int NUMBER_OF_ROTATIONS = 7;
 int SHAPES_PER_CLICK = 5;
 int SHAPE_SCATTER = 5;
 float SHAPE_SCALE_MIN = 1f;
 float SHAPE_SCALE_MAX = 3f;
-int SHAPE_FILL_ALPHA = 100;
+int SHAPE_FILL_ALPHA = 10;
 int SHAPE_STROKE_ALPHA = 0;
-int PARTICLE_FORCE_RADIUS = 50;
+int PARTICLE_FORCE_RADIUS = 200;
 float PARTICLE_FORCE = -2.5f;
-float PARTICLE_LIFETIME = 30f;
+float PARTICLE_LIFETIME = 300f;
 
 void setup() {
   size(1000, 1000);
@@ -29,10 +30,10 @@ void setup() {
   canvas.beginDraw();
   canvas.background(255);
   canvas.endDraw();
-  loadVectors("retro", "flourish");
+  loadVectors("retro", "flourish", "scribble", "sketch", "doodads");
   physics = new VerletPhysics2D();
   physics.setDrag(0.5f);
-  sourceImage = loadImage("http://img.ffffound.com/static-data/assets/6/31b1dc3c0395c79221ebf835485afc9b705278b9_m.jpg");
+  sourceImage = loadImage("http://img.ffffound.com/static-data/assets/6/bf0745299912141526a9907b2f3f2a77cd82ddb4_m.jpg");
   sourceImage.loadPixels();
   cp5 = new ControlP5(this);
   cp5.addNumberbox("NUMBER_OF_ROTATIONS").setPosition(10, 100).setSize(100, 14).setMultiplier(1).setMin(1).setMax(50).setValue(NUMBER_OF_ROTATIONS).setCaptionLabel("NUMBER_OF_ROTATIONS");
@@ -62,6 +63,7 @@ void draw() {
     }
     for (float i = 0; i < TWO_PI; i+= TWO_PI / NUMBER_OF_ROTATIONS) {
       int c = getColor(p, "fadeTo", p.targetPixel);
+      //int c = getColor(p, "fadeTo", 0xFF000000);
       int fillColor = color(red(c), green(c), blue(c), getAlpha(p, "fadeInOut", SHAPE_FILL_ALPHA));
       int strokeColor = color(red(p.pixel), green(p.pixel), blue(p.pixel), getAlpha(p, "fadeInOut", SHAPE_STROKE_ALPHA));
       if (SHAPE_FILL_ALPHA != 0) canvas.fill(fillColor);
@@ -79,10 +81,32 @@ void draw() {
   }
   canvas.endDraw();
   image(canvas, 0, 0, width, height);
+  //if (physics.particles.size()>0) addFrame();
   if (isToolbarVisible) {
     fill(0, 150);
     rect(0, 0, width, height);
   }
+}
+
+void addFrame() {
+  String index = "";
+  if (videoFrame<10) {
+    index = "0000"+videoFrame;
+  } 
+  else if (videoFrame<100) {
+    index = "000"+videoFrame;
+  } 
+  else if (videoFrame<1000) {
+    index = "00"+videoFrame;
+  } 
+  else if (videoFrame<10000) {
+    index = "0"+videoFrame;
+  } 
+  else {
+    index=""+videoFrame;
+  }
+  saveFrame("data/video/" + index + ".tif");
+  videoFrame++;
 }
 
 void mousePressed() {
@@ -132,10 +156,10 @@ float getAlpha(Particle p, String mode, int max) {
   }
   if (mode == "fadeInOut") {
     if (p.age / p.lifetime < 0.5) {
-      return map(p.age, 0, p.lifetime/2, 1, max);
+      return map(p.age, 0, p.lifetime / 2, 1, max);
     }
     else {
-      return map(p.age, p.lifetime/2, p.lifetime, max, 1);
+      return map(p.age, p.lifetime / 2, p.lifetime, max, 1);
     }
   }
   return max;
