@@ -28,10 +28,10 @@ void setup() {
   canvas.beginDraw();
   canvas.background(255);
   canvas.endDraw();
-  loadVectors("ornate", "retro", "flourish", "doodads");
+  loadVectors("retro", "flourish");
   physics = new VerletPhysics2D();
   physics.setDrag(0.5f);
-  sourceImage = loadImage("http://img.ffffound.com/static-data/assets/6/e9f0f42dbec13654030f5a2bcab97c7b465aed7e_m.jpg");
+  sourceImage = loadImage("bitmap/5317657715_3f0c8ca5fe_o.jpg");
   sourceImage.loadPixels();
   setupCP5();
 }
@@ -52,17 +52,17 @@ void setupCP5() {
 
 float getAlpha(Particle p, String mode, int max) {
   if (mode == "fadeIn") {
-    return map(p.age, 0, p.lifetime, 0, max);
+    return map(p.age, 0, p.lifetime, 1, max);
   }
   if (mode == "fadeOut") {
-    return map(p.age, 0, p.lifetime, max, 0);
+    return map(p.age, 0, p.lifetime, max, 1);
   }
   if (mode == "fadeInOut") {
     if (p.age / p.lifetime < 0.5) {
-      return map(p.age, 0, p.lifetime/2, 0, max/2);
+      return map(p.age, 0, p.lifetime/2, 1, max);
     }
     else {
-      return map(p.age, p.lifetime/2, p.lifetime, max/2, max);
+      return map(p.age, p.lifetime/2, p.lifetime, max, 1);
     }
   }
   return max;
@@ -86,44 +86,78 @@ float getScale(Particle p, String mode) {
       return map(p.age, p.lifetime/2, p.lifetime, SHAPE_SCALE_MAX, 0);
     }
   }
-  return 1;
+  return 1f;
+}
+
+int getColor(Particle p, String mode) {
+  if (mode == "fadeToBlack") {
+    return lerpColor(p.pixel, 0xFF000000, p.age / p.lifetime);
+  }
+  if (mode == "fadeFromBlack") {
+    return lerpColor(0xFF000000, p.pixel, p.age / p.lifetime);
+  }
+  if (mode == "fadeToWhite") {
+    return lerpColor(p.pixel, 0xFFFFFFFF, p.age / p.lifetime);
+  }
+  if (mode == "fadeFromWhite") {
+    return lerpColor(0xFFFFFFFF, p.pixel, p.age / p.lifetime);
+  }
+  return p.pixel;
+}
+
+float getRotation(Particle p, String mode) {
+  if (mode == "particleHeading") {
+    return p.getVelocity().heading();
+  }
+  if (mode == "globalHeading") {
+    return p.heading();
+  }
+  if (mode == "random") {
+    return random(TWO_PI);
+  }
+  return 0f;
+}
+
+float getRotation(Particle p, String mode, float min, float max, String direction) {
+  if (mode == "noise") {
+    if (direction == "clockwise") return map(noise(time), 0, 1, min, max);
+    else return map(noise(time), 0, 1, max, min);
+  }
+  if (mode == "age") {
+    if (direction == "clockwise") return map(p.age / p.lifetime, 0, 1, min, max);
+    else return map(p.age / p.lifetime, 0, 1, max, min);
+  }
+  return 0f;
 }
 
 void draw() {
   time += 0.1;
   physics.update();
   canvas.beginDraw();
+  canvas.noFill();
+  canvas.noStroke();
   for (VerletParticle2D vp2d : physics.particles) {
     Particle p = (Particle) vp2d;
-    p.age++;
     if (p.age >= p.lifetime) {
       physics.removeParticle(p); 
       return;
     }
     for (float i = 0; i < TWO_PI; i+= TWO_PI / NUMBER_OF_ROTATIONS) {
-      int fillColor = color(red(p.pixel), green(p.pixel), blue(p.pixel), getAlpha(p, "fadeInOut", SHAPE_FILL_ALPHA));
+      int c = getColor(p, "fadeToBlack");
+      int fillColor = color(red(c), green(c), blue(c), getAlpha(p, "fadeOut", SHAPE_FILL_ALPHA));
       int strokeColor = color(red(p.pixel), green(p.pixel), blue(p.pixel), getAlpha(p, "fadeIn", SHAPE_STROKE_ALPHA));
-      if (SHAPE_FILL_ALPHA == 0) {
-        canvas.noFill();
-      } 
-      else {
-        canvas.fill(fillColor);
-      }
-      if (SHAPE_STROKE_ALPHA == 0) {
-        canvas.noStroke();
-      }
-      else {
-        canvas.stroke(strokeColor);
-      }
+      if (SHAPE_FILL_ALPHA != 0) canvas.fill(fillColor);
+      if (SHAPE_STROKE_ALPHA != 0) canvas.stroke(strokeColor);
       canvas.pushMatrix();
       canvas.translate(canvas.width / 2, canvas.height / 2);
       canvas.rotate(i);
       p.shape.resetMatrix();
-      p.shape.scale(getScale(p, "scaleInOut"));
-      p.shape.rotate(p.getVelocity().heading());
-      canvas.shape(p.shape, p.x-canvas.width / 2, p.y-canvas.height / 2);
+      p.shape.scale(getScale(p, "scaleIn"));
+      p.shape.rotate(getRotation(p, "age", 0, PI, p.directionality));
+      canvas.shape(p.shape, p.x - canvas.width / 2, p.y - canvas.height / 2);
       canvas.popMatrix();
     }
+    p.age++;
   }
   canvas.endDraw();
   image(canvas, 0, 0, width, height);
@@ -151,7 +185,7 @@ void mousePressed() {
     physics.addBehavior(new AttractionBehavior(p, PARTICLE_FORCE_RADIUS, PARTICLE_FORCE));
     p.shape = shapes.get((int) random(shapes.size()));
     p.pixel = sourceImage.pixels[(int) random(sourceImage.pixels.length)];
-    p.lifetime = random(100);
+    p.lifetime = 30f;
   }
 }
 
@@ -189,7 +223,7 @@ void loadVectors(String ... folderName) {
       if (file.isFile()) {
         PShape shape = loadShape(file.getAbsolutePath());
         for (PShape layer : shape.getChildren()) {
-          if (layer!=null && limit < 20) {
+          if (layer!=null && limit < 30) {
             layer.disableStyle();
             shapes.add(layer);
             limit++;
